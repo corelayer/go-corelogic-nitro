@@ -18,16 +18,18 @@ package corelogic
 
 import (
 	"fmt"
-	"github.com/corelayer/go-netscaler-nitro/pkg/client"
+	"github.com/corelayer/go-corelogic-nitro/pkg/resource/controllers"
+	"github.com/corelayer/go-netscaler-nitro/pkg/appconfig"
+	"github.com/corelayer/go-netscaler-nitro/pkg/nitro"
 	"time"
 )
 
 type HttpProvider struct {
-	environment client.Environment
+	environment appconfig.Environment
 }
 
 // NewCoreLogicHttpProvider returns a HTTPProvider instance with a configured list of hosts
-func NewCoreLogicHttpProvider(environment client.Environment) (*HttpProvider, error) {
+func NewCoreLogicHttpProvider(environment appconfig.Environment) (*HttpProvider, error) {
 	c := &HttpProvider{
 		environment: environment,
 	}
@@ -36,7 +38,21 @@ func NewCoreLogicHttpProvider(environment client.Environment) (*HttpProvider, er
 }
 
 func (p *HttpProvider) Present(domain string, token string, keyAuth string) error {
-	//var err error
+	var err error
+	var clients map[string]*nitro.Client
+
+	clients, err = p.environment.GetAllNitroClients()
+	if err != nil {
+		return err
+	}
+
+	var primary string
+	primary, err = p.environment.GetPrimaryNodeName()
+	if err != nil {
+		return err
+	}
+
+	csvc := controllers.NewCoreLogicController(clients[primary])
 
 	fmt.Printf("PRESENTING TOKEN\n")
 	fmt.Println("")
@@ -44,7 +60,8 @@ func (p *HttpProvider) Present(domain string, token string, keyAuth string) erro
 	fmt.Printf("Token: %s\n", token)
 	fmt.Printf("Authorization code: %s\n", keyAuth)
 	fmt.Println("")
-	fmt.Printf("Getting primary node for environment %s", p.environment.Name)
+	fmt.Printf("Getting primary node for environment %s: %s", p.environment.Name, primary)
+	_, err = csvc.ListCsVserver()
 	fmt.Printf("Getting csvserver for domain %s\n", domain)
 	fmt.Printf("Writing token %s and key %s to SM_ACME\n", token, keyAuth)
 	fmt.Println("")
